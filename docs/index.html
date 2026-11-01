@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>fr-passphrase</title>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 40rem; margin: 2rem auto; padding: 0 1rem; line-height: 1.5; }
+    form { display: grid; grid-template-columns: max-content 1fr; gap: .5rem 1rem; align-items: center; justify-items: start; }
+    input[type=number], input[type=text] { width: 6rem; }
+    button { margin-top: 1rem; padding: .4rem 1rem; }
+    #passphrase { font-family: ui-monospace, monospace; font-size: 1.3rem; word-break: break-all; padding: .8rem; background: #f3f3f3; border-radius: 4px; min-height: 1.5em; }
+    small { color: #666; }
+  </style>
+</head>
+<body>
+  <h1>fr-passphrase</h1>
+  <p>Générateur de passphrase en français, selon la méthode <a href="https://fr.wikipedia.org/wiki/Diceware">Diceware</a>.</p>
+
+  <form id="options">
+    <label for="words">Nombre de mots</label>
+    <input type="number" id="words" min="1" value="5">
+    <label for="separator">Séparateur</label>
+    <input type="text" id="separator" value="-">
+    <label for="uppercase">Majuscule</label>
+    <input type="checkbox" id="uppercase">
+    <label for="digits">Chiffres</label>
+    <input type="number" id="digits" min="0" value="0">
+  </form>
+  <button id="generate">Générer</button>
+  <button id="copy">Copier</button>
+  <button id="reset">Réinitialiser</button>
+
+  <p id="passphrase"></p>
+  <p id="entropy"></p>
+
+  <p><small><a href="https://github.com/jsdlm/fr-passphrase">Code source</a> · liste de mots <a href="https://github.com/mbelivo/diceware-wordlists-fr">mbelivo/diceware-wordlists-fr</a></small></p>
+
+  <script>
+    let wordlist = [];
+
+    // Entier uniforme dans [0, n) via crypto.getRandomValues, sans biais modulo.
+    function randrange(n) {
+      const limit = Math.floor(2 ** 32 / n) * n;
+      const buf = new Uint32Array(1);
+      do { crypto.getRandomValues(buf); } while (buf[0] >= limit);
+      return buf[0] % n;
+    }
+
+    function generate() {
+      const nbWords = Math.max(1, parseInt(document.getElementById("words").value, 10) || 1);
+      const nbDigits = Math.max(0, parseInt(document.getElementById("digits").value, 10) || 0);
+      const uppercase = document.getElementById("uppercase").checked;
+      const sep = document.getElementById("separator").value;
+
+      const words = Array.from({ length: nbWords }, () => wordlist[randrange(wordlist.length)]);
+      let entropy = nbWords * Math.log2(wordlist.length);
+
+      if (uppercase) {
+        const i = randrange(words.length);
+        words[i] = words[i].charAt(0).toUpperCase() + words[i].slice(1);
+        entropy += Math.log2(words.length);
+      }
+
+      if (nbDigits > 0) {
+        let number = "";
+        for (let i = 0; i < nbDigits; i++) number += randrange(10);
+        const nbPositions = words.length + 1;
+        words.splice(randrange(nbPositions), 0, number);
+        entropy += nbDigits * Math.log2(10) + Math.log2(nbPositions);
+      }
+
+      const passphrase = words.join(sep);
+      entropy = Math.min(passphrase.length * Math.log2(26), entropy);
+
+      document.getElementById("passphrase").textContent = passphrase;
+      document.getElementById("entropy").textContent = `Entropie : ${entropy.toFixed(1)} bits`;
+    }
+
+    document.getElementById("generate").addEventListener("click", generate);
+    document.getElementById("options").addEventListener("change", generate);
+    document.getElementById("reset").addEventListener("click", () => {
+      document.getElementById("options").reset();
+      generate();
+    });
+    document.getElementById("copy").addEventListener("click", () =>
+      navigator.clipboard.writeText(document.getElementById("passphrase").textContent));
+
+    fetch("https://raw.githubusercontent.com/jsdlm/fr-passphrase/main/wordlist.txt")
+      .then((r) => r.text())
+      .then((text) => {
+        wordlist = text.split("\n").map((l) => l.trim()).filter(Boolean).map((l) => l.split(/\s+/).slice(1).join(" "));
+        generate();
+      });
+  </script>
+</body>
+</html>
