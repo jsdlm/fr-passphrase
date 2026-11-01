@@ -29,6 +29,10 @@ La majuscule et le nombre sont tirés au hasard et comptés dans l'entropie, mai
 
 Le script affiche un avertissement si l'entropie descend sous 44 bits.
 
+## Version web
+
+Une version en ligne est disponible sur https://jsdlm.github.io/fr-passphrase/. La génération se fait entièrement dans le navigateur. Le code se trouve dans `docs/`.
+
 ## Crédits
 
 - https://theworld.com/~reinhold/diceware.html
